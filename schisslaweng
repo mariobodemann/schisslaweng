@@ -1,0 +1,46 @@
+#!/bin/bash
+
+NEXT="$1"
+shift
+
+# Next url given?
+if [ -z "${NEXT}" ]; then
+	# no, look for a new one by using either old ones or the first ever schisslaweng
+	if [ -e "/tmp/last.panel" ]; then
+		LAST="$(cat /tmp/last.panel)"
+	else
+		LAST="https://www.schisslaweng.net/mach-doch-mal/"
+	fi
+
+	LAST_HTML="$(curl --silent ${LAST})"
+	NEXT="$(echo $LAST_HTML|grep -o 'value="http.*/"> '| grep -o 'https:[^ "]\+' |sort -R|head -1|tee /tmp/last.panel)"
+fi
+
+if [ -e ${NEXT} ]; then
+	echo Overwriting base panel url with file
+	NEXT="$(cat ${NEXT})"
+fi
+
+PANELS="$(curl --silent "$NEXT" | grep -o 'https[^ ]\+ 1280w' | cut -d' ' -f1)"
+NUM_PANELS=$(echo $PANELS | grep -o 'http' | wc -l)
+echo $NUM_PANELS panels found
+
+if [ "$NUM_PANELS" -gt "1" ]; then
+	i=0
+	for P in $PANELS; do
+		curl --silent "$P" | convert - /tmp/multipanel.$I.png
+		((I++))
+	done
+
+	montage -background none -tile 2x -geometry +10+10 /tmp/multipanel.*.png /tmp/panels.png
+
+	rm /tmp/multipanel.*.png
+else
+	curl --silent $PANELS | convert - /tmp/panels.png
+fi
+
+if [ ! -z "${SCHISSLA_SHOW}" ]; then
+	display /tmp/panels.png
+else
+	echo "Done. See file:///tmp/panels.png"
+fi
