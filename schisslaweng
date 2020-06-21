@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if [ -e /tmp/ ]; then
+	OUT_PATH=/tmp
+else
+	OUT_PATH="$HOME/.schisslaweng"
+	mkdir -p $OUT_PATH
+fi
+
 NEXT="$1"
 shift
 
@@ -9,21 +16,20 @@ if [ ! -z ${NEXT} -a -e ${NEXT} ]; then
 	NEXT="$(cat ${NEXT})"
 fi
 
-
 # Next is a url?
 if [ -z "${NEXT}" ]; then
 	echo guessing next url
 	# no, look for a new one by using either old ones or the first ever schisslaweng
-	if [ -e "/tmp/last.panel" ]; then
+	if [ -e "${OUT_PATH}/last.panel" ]; then
 		echo using last one
-		LAST="$(cat /tmp/last.panel)"
+		LAST="$(cat ${OUT_PATH}/last.panel)"
 	else
 		echo starting from scratch
 		LAST="https://www.schisslaweng.net/mach-doch-mal/"
 	fi
 
 	LAST_HTML="$(curl --silent ${LAST})"
-	NEXT="$(echo $LAST_HTML|grep -o 'value="http.*/"> '| grep -o 'https:[^ "]\+' |sort -R|head -1|tee /tmp/last.panel)"
+	NEXT="$(echo $LAST_HTML|grep -o 'value="http.*/"> '| grep -o 'https:[^ "]\+' |sort -R|head -1|tee ${OUT_PATH}/last.panel)"
 fi
 
 PANELS="$(curl --silent "$NEXT" | grep -o 'https[^ ]\+ 1280w' | cut -d' ' -f1)"
@@ -37,19 +43,19 @@ if [ "$NUM_PANELS" -eq "0" ]; then
 elif [ "$NUM_PANELS" -gt "1" ]; then
 	i=0
 	for P in $PANELS; do
-		curl --silent "$P" | convert - /tmp/multipanel.$I.png
+		curl --silent "$P" | convert - ${OUT_PATH}/multipanel.$I.png
 		((I++))
 	done
 
-	montage -background none -tile 2x -geometry +10+10 /tmp/multipanel.*.png /tmp/panels.png
+	montage -background none -tile 2x -geometry +10+10 ${OUT_PATH}/multipanel.*.png ${OUT_PATH}/panels.png
 
-	rm /tmp/multipanel.*.png
+	rm ${OUT_PATH}/multipanel.*.png
 else
-	curl --silent $PANELS | convert - /tmp/panels.png
+	curl --silent $PANELS | convert - ${OUT_PATH}/panels.png
 fi
 
-if [ ! -z "${SCHISSLA_SHOW}" ]; then
-	display /tmp/panels.png
+if [ ! -z "${SCHISSLAWENG_SHOW}" ]; then
+	${SCHISSLAWENG_SHOW} ${OUT_PATH}/panels.png
 else
-	echo "Done. See file:///tmp/panels.png"
+	echo "Done. See file://${OUT_PATH}/panels.png"
 fi
