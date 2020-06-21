@@ -3,12 +3,22 @@
 NEXT="$1"
 shift
 
-# Next url given?
+# Next is a file?
+if [ ! -z ${NEXT} -a -e ${NEXT} ]; then
+	echo Overwriting base panel url with file
+	NEXT="$(cat ${NEXT})"
+fi
+
+
+# Next is a url?
 if [ -z "${NEXT}" ]; then
+	echo guessing next url
 	# no, look for a new one by using either old ones or the first ever schisslaweng
 	if [ -e "/tmp/last.panel" ]; then
+		echo using last one
 		LAST="$(cat /tmp/last.panel)"
 	else
+		echo starting from scratch
 		LAST="https://www.schisslaweng.net/mach-doch-mal/"
 	fi
 
@@ -16,16 +26,15 @@ if [ -z "${NEXT}" ]; then
 	NEXT="$(echo $LAST_HTML|grep -o 'value="http.*/"> '| grep -o 'https:[^ "]\+' |sort -R|head -1|tee /tmp/last.panel)"
 fi
 
-if [ -e ${NEXT} ]; then
-	echo Overwriting base panel url with file
-	NEXT="$(cat ${NEXT})"
-fi
-
 PANELS="$(curl --silent "$NEXT" | grep -o 'https[^ ]\+ 1280w' | cut -d' ' -f1)"
 NUM_PANELS=$(echo $PANELS | grep -o 'http' | wc -l)
 echo $NUM_PANELS panels found
 
-if [ "$NUM_PANELS" -gt "1" ]; then
+
+if [ "$NUM_PANELS" -eq "0" ]; then
+	echo "Could not fine panels in $NEXT."
+	exit -1
+elif [ "$NUM_PANELS" -gt "1" ]; then
 	i=0
 	for P in $PANELS; do
 		curl --silent "$P" | convert - /tmp/multipanel.$I.png
