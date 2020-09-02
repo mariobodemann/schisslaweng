@@ -28,28 +28,21 @@ if [ -z "${NEXT}" ]; then
 		LAST="https://www.schisslaweng.net/mach-doch-mal/"
 	fi
 
-	LAST_HTML="$(curl --silent ${LAST})"
-	NEXT="$(echo $LAST_HTML|grep -o 'value="http.*/"> '| grep -o 'https:[^ "]\+' |sort -R|head -1|tee ${OUT_PATH}/last.panel)"
+	ALL="$(curl --silent 'https://wrapapi.com/use/mariobodemann/schisslaweng/all/latest?wrapAPIKey=7UF1tvyFxs4TXQDYq4btuIIfIuHvbSdz' | jq -r .[])"
+	NEXT="$(echo $ALL | tr ' ' '\n' |  sort --random-sort | head -1 | basename "$(cat /dev/stdin)")"
 fi
 
-PANELS="$(curl --silent "$NEXT" | grep -o 'https[^ ]\+ 1280w' | cut -d' ' -f1)"
-NUM_PANELS=$(echo $PANELS | grep -o 'http' | wc -l)
+echo $NEXT found
+PANELS="$(curl --silent "https://wrapapi.com/use/mariobodemann/schisslaweng/get/latest?wrapAPIKey=7UF1tvyFxs4TXQDYq4btuIIfIuHvbSdz&id=$NEXT" | jq -r .[] | tr ' ' '\n')"
+NUM_PANELS=$(echo $PANELS | tr ' ' '\n' | wc -l)
 echo $NUM_PANELS panels found
 
 
-if [ "$NUM_PANELS" -eq "0" ]; then
-	echo "Could not fine panels in $NEXT."
+if [ "$NUM_PANELS" -le "0" ]; then
+	echo "Could not find panels for $NEXT."
 	exit -1
 elif [ "$NUM_PANELS" -gt "1" ]; then
-	i=0
-	for P in $PANELS; do
-		curl --silent "$P" | convert - ${OUT_PATH}/multipanel.$I.png
-		((I++))
-	done
-
-	montage -background none -tile 2x -geometry +10+10 ${OUT_PATH}/multipanel.*.png ${OUT_PATH}/panels.png
-
-	rm ${OUT_PATH}/multipanel.*.png
+	montage -background none -tile 2x -geometry +10+10 $PANELS ${OUT_PATH}/panels.png
 else
 	curl --silent $PANELS | convert - ${OUT_PATH}/panels.png
 fi
